@@ -1,9 +1,9 @@
 This folder is for blocked bloom filter implementation, everything is same as bloom filter, 
 except it uses multi bit vectors with size 512 bits instead of a single bit vector to record the hash values.
 
-**PLEASE note that if bit vector size is lower than 512, please run bloom filter implementation instead, this implementation is not for small N **
+##PLEASE note that if bit vector size is lower than 512, please run bloom filter implementation instead, this implementation is not for small N.
 
-##This folder contains the implementation of Bloom Filter(`BlockBF.cpp`, `BlockBF.h` and `BloomFilter.h`). 
+##This folder contains the implementation of Blocked Bloom Filter(`BlockBF.cpp`, `BlockBF.h` and `BloomFilter.h`). 
 - To run Bloom Filter, please run `g++ blockBF.cpp -o bf` with g++ installed\
   1. There are two main functions in this implementation, which are `build` and `query`
   - To run build function, please run  
