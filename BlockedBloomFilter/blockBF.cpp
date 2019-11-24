@@ -1,6 +1,6 @@
 // This is the main function of assignment 2.
 #include "blockBF.h"
-#include "smhasher-master/src/MurmurHash3.cpp"
+#include "MurmurHash3.cpp"
 #define LOG(x) std::cout<< std::endl << "LOG: "<< x << std::endl<< std::endl;
 
 using namespace std;
