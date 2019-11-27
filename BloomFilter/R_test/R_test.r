@@ -30,9 +30,17 @@ HalfPresentQueryResultFile <- "HalfPresentQueryResultFile.txt"
 NoPresentQueryResultFile <- "NoPresentQueryResultFile.txt"
 
 # Initialize Time result receptors
-QueryTimeRecord <- as.data.frame(matrix(data = 0, nrow = length(N), ncol = length(fpr)))
-rownames(QueryTimeRecord) <- N
-colnames(QueryTimeRecord) <- fpr
+AllPresentQueryTimeRecord <- as.data.frame(matrix(data = 0, nrow = length(N), ncol = length(fpr)))
+rownames(AllPresentQueryTimeRecord) <- N
+colnames(AllPresentQueryTimeRecord) <- fpr
+
+HalfPresentQueryTimeRecord <- as.data.frame(matrix(data = 0, nrow = length(N), ncol = length(fpr)))
+rownames(HalfPresentQueryTimeRecord) <- N
+colnames(HalfPresentQueryTimeRecord) <- fpr
+
+NoPresentQueryTimeRecord <- as.data.frame(matrix(data = 0, nrow = length(N), ncol = length(fpr)))
+rownames(NoPresentQueryTimeRecord) <- N
+colnames(NoPresentQueryTimeRecord) <- fpr
 
 # Initial fpr result receptors
 
@@ -68,16 +76,24 @@ for (fpr_iter in seq(length(fpr))) {
     HalfPresentQuery <- c(((N[N_iter]+1):(N[N_iter] + numQuery/2)), c(sample(keyStr, numQuery/2, replace = F)))
     write.table(HalfPresentQuery, file = HalfPresentQueryFile, quote = FALSE, row.names = FALSE, col.names = FALSE)
     
-    NoPresentQuery <- sample(c(N[N_iter]:(2*N[N_iter])), numQuery, replace = F)
+    NoPresentQuery <- sample(c((N[N_iter]+1):(2*N[N_iter])), numQuery, replace = F)
     write.table(NoPresentQuery, file = NoPresentQueryFile, quote = FALSE, row.names = FALSE, col.names = FALSE)
 
     # Run c query and record time
-    rank.start.time <- Sys.time()
+    AllPresentQuery.rank.start.time <- Sys.time()
     system(paste("../bf", "query", "-i", BVFile, "-q", AllPresentQueryFile, "-o", AllPresentQueryResultFile, sep = " "))
+    AllPresentQuery.rank.end.time <- Sys.time()
+    AllPresentQueryTimeRecord[N_iter,fpr_iter] <- AllPresentQuery.rank.end.time - AllPresentQuery.rank.start.time
+    
+    HalfPresentQuery.rank.start.time <- Sys.time()
     system(paste("../bf", "query", "-i", BVFile, "-q", HalfPresentQueryFile, "-o", HalfPresentQueryResultFile, sep = " "))
+    HalfPresentQuery.rank.end.time <- Sys.time()
+    HalfPresentQueryTimeRecord[N_iter,fpr_iter] <- HalfPresentQuery.rank.end.time - HalfPresentQuery.rank.start.time
+    
+    NoPresentQuery.rank.start.time <- Sys.time()
     system(paste("../bf", "query", "-i", BVFile, "-q", NoPresentQueryFile, "-o", NoPresentQueryResultFile, sep = " "))
-    rank.end.time <- Sys.time()
-    QueryTimeRecord[N_iter,fpr_iter] <- rank.end.time - rank.start.time
+    NoPresentQuery.rank.end.time <- Sys.time()
+    NoPresentQueryTimeRecord[N_iter,fpr_iter] <- NoPresentQuery.rank.end.time - NoPresentQuery.rank.start.time
 
     #-------------------------------------------------------------------------------------------------------------------------------#
     # AllPresent
@@ -114,10 +130,10 @@ for (fpr_iter in seq(length(fpr))) {
 library(ggplot2)
 library(reshape)
 
-HalfPresentQueryfprRecord <- cbind("Truth" = as.character(fpr),HalfPresentQueryfprRecord)
+HalfPresentQueryfprRecord <- cbind.data.frame("Truth" = as.character(fpr),HalfPresentQueryfprRecord, stringsAsFactors =FALSE)
 HalfPresentQueryfprRecord_melted <- melt(HalfPresentQueryfprRecord, id.vars = "Truth")
 colnames(HalfPresentQueryfprRecord_melted) <- c("Truth", "N", "FPR")
-HalfPresentQueryfprRecord_melted <- as.data.frame(apply(HalfPresentQueryfprRecord_melted,2, FUN = function(x) as.numeric(as.character(x))))
+HalfPresentQueryfprRecord_melted <- as.data.frame(apply(HalfPresentQueryfprRecord_melted,2, FUN = function(x) as.numeric(as.character(x))),stringsAsFactors = FALSE)
 
 pdf(file = "Ture FPR Vs Empirical FPR HalfPresentQuery.pdf",height = 6,width = 12)
 ggplot(HalfPresentQueryfprRecord_melted, aes(x = Truth, y = FPR, colour = as.character((N)))) + 
@@ -131,10 +147,10 @@ ggplot(HalfPresentQueryfprRecord_melted, aes(x = Truth, y = FPR, colour = as.cha
     theme(text = element_text(size=15))
 dev.off()
 
-NoPresentQueryfprRecord <- cbind("Truth" = as.character(fpr),NoPresentQueryfprRecord)
+NoPresentQueryfprRecord <- cbind("Truth" = as.character(fpr),NoPresentQueryfprRecord, stringsAsFactors =FALSE)
 NoPresentQueryfprRecord_melted <- melt(NoPresentQueryfprRecord, id.vars = "Truth")
 colnames(NoPresentQueryfprRecord_melted) <- c("Truth", "N", "FPR")
-NoPresentQueryfprRecord_melted <- as.data.frame(apply(NoPresentQueryfprRecord_melted,2, FUN = function(x) as.numeric(as.character(x))))
+NoPresentQueryfprRecord_melted <- as.data.frame(apply(NoPresentQueryfprRecord_melted,2, FUN = function(x) as.numeric(as.character(x))), stringsAsFactors =FALSE)
 
 pdf(file = "Ture FPR Vs Empirical FPR NoPresentQuery.pdf",height = 6,width = 12)
 ggplot(NoPresentQueryfprRecord_melted, aes(x = Truth, y = FPR, colour = as.character((N)))) + 
@@ -148,20 +164,55 @@ ggplot(NoPresentQueryfprRecord_melted, aes(x = Truth, y = FPR, colour = as.chara
     theme(text = element_text(size=15))
 dev.off()
 
+AllPresentQueryTimeRecord <- AllPresentQueryTimeRecord/numQuery
+AllPresentQueryTimeRecord <- cbind("N" = as.character(N),AllPresentQueryTimeRecord, stringsAsFactors =FALSE)
+AllPresentQueryTimeRecord_melted <- melt(AllPresentQueryTimeRecord, id.vars = "N")
+colnames(AllPresentQueryTimeRecord_melted) <- c("N", "TrueFPR", "Runtime")
+AllPresentQueryTimeRecord_melted <- as.data.frame(apply(AllPresentQueryTimeRecord_melted,2, FUN = function(x) as.numeric(as.character(x))), stringsAsFactors =FALSE)
 
-QueryTimeRecord <- cbind("N" = as.character(N),QueryTimeRecord)
-QueryTimeRecord_melted <- melt(QueryTimeRecord, id.vars = "N")
-colnames(QueryTimeRecord_melted) <- c("N", "TrueFPR", "Runtime")
-QueryTimeRecord_melted <- as.data.frame(apply(QueryTimeRecord_melted,2, FUN = function(x) as.numeric(as.character(x))))
-
-pdf(file = "Key Size Vs Runtime.pdf",height = 6,width = 12)
-ggplot(QueryTimeRecord_melted, aes(x = N, y = Runtime, colour = as.character((TrueFPR)))) + 
+pdf(file = "Key Size Vs Runtime All.pdf",height = 9,width = 6)
+ggplot(AllPresentQueryTimeRecord_melted, aes(x = N, y = Runtime, colour = as.character((TrueFPR)))) + 
     geom_line() + 
     geom_point() + 
     theme_bw() + 
     labs(title = "Key Size Vs Runtime", 
          y = "Runtime", x = "Key Size",
-         colour = "set FPR")+
+         colour = "set FPR",caption = "All queries present in original keys")+
     theme(text = element_text(size=15))
 dev.off()
+
+HalfPresentQueryTimeRecord <- HalfPresentQueryTimeRecord/numQuery
+HalfPresentQueryTimeRecord <- cbind("N" = as.character(N),HalfPresentQueryTimeRecord, stringsAsFactors =FALSE)
+HalfPresentQueryTimeRecord_melted <- melt(HalfPresentQueryTimeRecord, id.vars = "N")
+colnames(HalfPresentQueryTimeRecord_melted) <- c("N", "TrueFPR", "Runtime")
+HalfPresentQueryTimeRecord_melted <- as.data.frame(apply(HalfPresentQueryTimeRecord_melted,2, FUN = function(x) as.numeric(as.character(x))), stringsAsFactors =FALSE)
+
+pdf(file = "Key Size Vs Runtime Half.pdf",height = 9,width = 6)
+ggplot(HalfPresentQueryTimeRecord_melted, aes(x = N, y = Runtime, colour = as.character((TrueFPR)))) + 
+  geom_line() + 
+  geom_point() + 
+  theme_bw() + 
+  labs(title = "Key Size Vs Runtime", 
+       y = "Runtime", x = "Key Size",
+       colour = "set FPR",caption = "Half queries present in original keys")+
+  theme(text = element_text(size=15))
+dev.off()
+
+NoPresentQueryTimeRecord <- NoPresentQueryTimeRecord/numQuery
+NoPresentQueryTimeRecord <- cbind("N" = as.character(N),NoPresentQueryTimeRecord, stringsAsFactors =FALSE)
+NoPresentQueryTimeRecord_melted <- melt(NoPresentQueryTimeRecord, id.vars = "N")
+colnames(NoPresentQueryTimeRecord_melted) <- c("N", "TrueFPR", "Runtime")
+NoPresentQueryTimeRecord_melted <- as.data.frame(apply(NoPresentQueryTimeRecord_melted,2, FUN = function(x) as.numeric(as.character(x))), stringsAsFactors =FALSE)
+
+pdf(file = "Key Size Vs Runtime No.pdf",height = 9,width = 6)
+ggplot(NoPresentQueryTimeRecord_melted, aes(x = N, y = Runtime, colour = as.character((TrueFPR)))) + 
+  geom_line() + 
+  geom_point() + 
+  theme_bw() + 
+  labs(title = "Key Size Vs Runtime", 
+       y = "Runtime", x = "Key Size",
+       colour = "set FPR",caption = "No queries present in original keys")+
+  theme(text = element_text(size=15))
+dev.off()
+
 
